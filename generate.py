@@ -3,6 +3,7 @@ import csv
 import random
 from datetime import datetime, timedelta
 from pathlib import Path
+import argparse          # разбор аргументов командной строки
 
 random.seed(42)
 
@@ -16,17 +17,17 @@ EVENTS = [
 
 ROWS = 10 # рядов в зале
 SEATS = 20 # мест в каждом ряду
-TOTAL_SALES = 500
 
-def make_sales():
+def make_sales(total):
     all_seats = [
         (event, row, seat)
         for event in EVENTS
         for row in range(1, ROWS + 1)
         for seat in range(1, SEATS + 1)
     ]
-    # sample берет 500 разных мест, одно не продаться дважды
-    chosen = random.sample(all_seats, TOTAL_SALES)
+    if total > len(all_seats):
+        raise SystemExit(f"Максимум {len(all_seats)}")
+    chosen = random.sample(all_seats, total)
 
     start = datetime(2026,10,1)
     sales = []
@@ -42,21 +43,26 @@ def make_sales():
         ])
 
     sales.sort(key=lambda s: s[0]) #сортировка по времени продаж
-        return sales
+    return sales
 
 
 def main():
-    out_dir = Path(__file__).parent / "data" #папка data рядом с generate
-    out_dir.mkdir(exist_ok=True)             #создать, если ее еще нет
+    parser = argparse.ArgumentParser(description="Генератор выгрузки продаж билетов")
+    parser.add_argument("--rows", type=int, default=500,
+                        help="сколько продаж сгенерировать (по умолчанию 500)")
+    args = parser.parse_args()       # читает то, что ты написал после имени файла
+
+    out_dir = Path(__file__).parent / "data"
+    out_dir.mkdir(exist_ok=True)
     out_file = out_dir / "sales_001.csv"
 
-    #newline = "" и utf-8 чтобы на винде не было пустых строк и кракозябр
     with open(out_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["sold_at", "event_id", "event_title", "event_date",
-                         "row", "seat", "price", "status"]) #заголовок
-        writer.writerows(make_sales())                      # 500 строк данных
-        print(f"Готово {out_file}")
+                         "row", "seat", "price", "status"])
+        writer.writerows(make_sales(args.rows))      # было make_sales()
+
+    print(f"Готово: {out_file} ({args.rows} строк)")
 
 
 if __name__ == "__main__":
